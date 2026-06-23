@@ -13,7 +13,7 @@ import Timetable from '../models/Timetable.js';
 import User from '../models/User.js';
 import ApiError from '../utils/apiError.js';
 import ApiResponse from '../utils/apiResponse.js';
-import { v2 as cloudinary } from 'cloudinary';
+import cloudinary from '../config/cloudinary.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: resolve student record from logged-in user
@@ -177,12 +177,23 @@ export const getStudentAssignments = asyncHandler(async (req, res, next) => {
     .sort({ deadline: 1 })
     .lean();
 
+  // Fetch actual student submissions for these assignments
+  const submissions = await Submission.find({
+    student: student._id,
+    assignment: { $in: assignments.map((a) => a._id) }
+  }).lean();
+
+  const submissionMap = {};
+  submissions.forEach((sub) => {
+    submissionMap[sub.assignment.toString()] = sub;
+  });
+
   // Normalize field names for frontend (dueDate = deadline, attachmentUrl = pdfFile)
   const normalized = assignments.map((a) => ({
     ...a,
     dueDate: a.deadline,
     attachmentUrl: a.pdfFile || null,
-    mySubmission: null, // Submission tracking requires a Submission model; placeholder
+    mySubmission: submissionMap[a._id.toString()] || null,
   }));
 
   res.status(200).json(new ApiResponse(200, normalized, 'Assignments fetched successfully'));

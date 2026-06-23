@@ -1,6 +1,14 @@
 import express from 'express';
 import { protect, authorizeRoles } from '../middlewares/authMiddleware.js';
-import upload from '../config/multer.js';
+import multer from 'multer';
+
+// Setup local memory upload for documents (PDF, zip, doc, etc.)
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 import {
   getStudentDashboardStats,
   getStudentMarks,
@@ -33,7 +41,7 @@ router.get('/timetable',  getStudentTimetable);
 
 // Assignments
 router.get('/assignments',               getStudentAssignments);
-router.post('/assignments/:id/submit',   upload.single('file'), submitAssignment);
+router.post('/assignments/:id/submit',   documentUpload.single('file'), submitAssignment);
 
 // Complaints
 router.get('/complaints',  getStudentComplaints);

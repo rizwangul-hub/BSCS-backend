@@ -1,5 +1,5 @@
 import asyncHandler from 'express-async-handler';
-import { v2 as cloudinary } from 'cloudinary';
+import cloudinary from '../../config/cloudinary.js';
 import Subject from '../../models/Subject.js';
 import Teacher from '../../models/Teacher.js';
 import Student from '../../models/Student.js';

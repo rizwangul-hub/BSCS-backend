@@ -27,10 +27,11 @@ const sendTokenResponse = (user, statusCode, message, res) => {
   user.save({ validateBeforeSave: false });
 
   // Cookie options
+  const isProduction = process.env.NODE_ENV === 'production';
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days matching refresh token expiry
   };
 
@@ -175,9 +176,12 @@ export const logout = asyncHandler(async (req, res, next) => {
   }
 
   // Clear cookie
+  const isProduction = process.env.NODE_ENV === 'production';
   res.cookie('refreshToken', 'none', {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
   });
 
   res.status(200).json(new ApiResponse(200, {}, 'Logged out successfully.'));
@@ -292,7 +296,7 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
  * @access  Public
  */
 export const refreshToken = asyncHandler(async (req, res, next) => {
-  let token = req.cookies.refreshToken || req.body.refreshToken;
+  let token = req.cookies?.refreshToken || req.body?.refreshToken;
 
   if (!token) {
     return next(new ApiError(401, 'Refresh token is required.'));
