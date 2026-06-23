@@ -23,7 +23,9 @@ import {
   createAssignment,
   getAssignments,
   updateAssignment,
-  deleteAssignment
+  deleteAssignment,
+  getAssignmentSubmissions,
+  gradeSubmission
 } from '../../controllers/teacher/assignmentController.js';
 
 import {
@@ -80,6 +82,8 @@ router.post('/assignments', memoryUpload.single('pdfFile'), validateCreateAssign
 router.get('/assignments', getAssignments);
 router.put('/assignments/:id', memoryUpload.single('pdfFile'), updateAssignment);
 router.delete('/assignments/:id', deleteAssignment);
+router.get('/assignments/:id/submissions', getAssignmentSubmissions);
+router.put('/submissions/:id/grade', gradeSubmission);
 
 // 5. Complaint Management
 router.get('/complaints', getComplaints);

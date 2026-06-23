@@ -4,6 +4,7 @@ import Subject from '../../models/Subject.js';
 import Teacher from '../../models/Teacher.js';
 import Student from '../../models/Student.js';
 import Assignment from '../../models/Assignment.js';
+import Submission from '../../models/Submission.js';
 import Notification from '../../models/Notification.js';
 import { logAdminAction } from '../../utils/auditLogger.js';
 import ApiError from '../../utils/apiError.js';
@@ -193,4 +194,107 @@ export const deleteAssignment = asyncHandler(async (req, res, next) => {
   await logAdminAction(req, `Teacher deleted assignment: "${assignment.title}" from subject ${subject?.subjectName || 'N/A'}`, 'assignment');
 
   res.status(200).json(new ApiResponse(200, {}, 'Assignment deleted successfully'));
+});
+
+/**
+ * @desc    Get student submissions for an assignment
+ * @route   GET /api/teacher/assignments/:id/submissions
+ * @access  Private/Teacher
+ */
+export const getAssignmentSubmissions = asyncHandler(async (req, res, next) => {
+  const teacher = await getTeacherProfile(req.user._id);
+  const assignmentId = req.params.id;
+
+  const assignment = await Assignment.findById(assignmentId).lean();
+  if (!assignment) {
+    return next(new ApiError(404, 'Assignment not found.'));
+  }
+
+  // Verify ownership of the subject
+  const subject = await Subject.findOne({ _id: assignment.subject, assignedTeacher: teacher._id }).lean();
+  if (!subject) {
+    return next(new ApiError(403, 'You are not authorized to view submissions for this subject.'));
+  }
+
+  // Fetch active students enrolled in this subject's semester and session
+  const students = await Student.find({
+    semester: subject.semester,
+    academicSession: subject.academicSession,
+    currentStatus: 'active'
+  }).lean();
+
+  // Fetch all student submissions for this assignment
+  const submissions = await Submission.find({ assignment: assignmentId }).lean();
+
+  const submissionMap = {};
+  submissions.forEach(sub => {
+    submissionMap[sub.student.toString()] = sub;
+  });
+
+  const roster = students.map(student => {
+    const sub = submissionMap[student._id.toString()];
+    return {
+      student: {
+        _id: student._id,
+        name: student.name,
+        rollNumber: student.rollNumber,
+        registrationNumber: student.registrationNumber
+      },
+      submitted: !!sub,
+      submittedAt: sub ? new Date(sub.submittedAt).toLocaleString() : '-',
+      fileUrl: sub?.fileUrl || null,
+      marks: sub?.marks !== null && sub?.marks !== undefined ? sub.marks : '',
+      feedback: sub?.feedback || '',
+      submissionId: sub?._id || null,
+      isGraded: sub?.status === 'graded'
+    };
+  });
+
+  res.status(200).json(new ApiResponse(200, roster, 'Submissions retrieved successfully'));
+});
+
+/**
+ * @desc    Grade a student submission
+ * @route   PUT /api/teacher/submissions/:id/grade
+ * @access  Private/Teacher
+ */
+export const gradeSubmission = asyncHandler(async (req, res, next) => {
+  const teacher = await getTeacherProfile(req.user._id);
+  const { marks, feedback } = req.body;
+
+  const submission = await Submission.findById(req.params.id);
+  if (!submission) {
+    return next(new ApiError(404, 'Submission record not found.'));
+  }
+
+  // Verify authorization via assignment subject
+  const assignment = await Assignment.findById(submission.assignment).lean();
+  const subject = await Subject.findOne({ _id: assignment.subject, assignedTeacher: teacher._id }).lean();
+  if (!subject) {
+    return next(new ApiError(403, 'You are not authorized to grade submissions for this subject.'));
+  }
+
+  submission.marks = marks;
+  submission.feedback = feedback || '';
+  submission.status = 'graded';
+  submission.gradedBy = teacher._id;
+  submission.gradedAt = new Date();
+
+  await submission.save();
+
+  // Create notification for the student
+  const studentProfile = await Student.findById(submission.student).lean();
+  if (studentProfile) {
+    await Notification.create({
+      receiver: studentProfile.userId,
+      title: 'Assignment Graded',
+      message: `Your submission for "${assignment.title}" has been graded. Marks: ${marks}/10`,
+      type: 'notice'
+    });
+  }
+
+  // Log Audit
+  await logAdminAction(req, `Teacher graded submission for student ${studentProfile?.name || 'N/A'} in assignment "${assignment.title}"`, 'assignment');
+
+  res.status(200).json(new ApiResponse(200, submission, 'Submission graded successfully'));
 });
