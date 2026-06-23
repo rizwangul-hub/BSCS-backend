@@ -14,6 +14,8 @@ import Assignment from './models/Assignment.js';
 import Notification from './models/Notification.js';
 import AuditLog from './models/AuditLog.js';
 
+import connectDB from './config/db.js';
+
 dotenv.config();
 process.env.NODE_ENV = 'test';
 const PORT = 5003;
@@ -25,7 +27,7 @@ const runTeacherTests = async () => {
 
   // 1. Database Connection
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await connectDB();
     console.log('MongoDB Connected successfully for teacher testing.');
   } catch (error) {
     console.error('Database connection failed:', error);
@@ -283,18 +285,18 @@ const runTeacherTests = async () => {
         assignment: 5,       // Out of 5
         quiz: 5,             // Out of 5
         attendanceMarks: 5   // Out of 5
-        // Total = 27 + (5*6) = 57. Percentage = 57/60 * 100 = 95%. Grade should be 'A'
+        // Total = 27 + Math.min(20, (5*6)) = 47. Percentage = 47/50 * 100 = 94%. Grade should be 'A'
       })
     });
     const addMarksData = await addMarksRes.json();
     console.log('Add Marks Status:', addMarksRes.status);
     console.log('Calculated percentage:', addMarksData.data.percentage);
     console.log('Calculated grade:', addMarksData.data.grade);
-    if (addMarksRes.status !== 201 || addMarksData.data.percentage !== 95 || addMarksData.data.grade !== 'A') {
+    if (addMarksRes.status !== 201 || addMarksData.data.percentage !== 94 || addMarksData.data.grade !== 'A') {
       throw new Error('Test 6 failed.');
     }
     marksRecordId = addMarksData.data._id;
-    console.log('SUCCESS: Marks uploaded and sessional calculations match Grade A (95%).');
+    console.log('SUCCESS: Marks uploaded and sessional calculations match Grade A (94%).');
 
     // 12. Test 7: Attempt Upload Marks for Outsider
     console.log('\n[Test 7] Attempting unauthorized marks upload...');

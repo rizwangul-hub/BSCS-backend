@@ -7,6 +7,8 @@ import Subject from './models/Subject.js';
 import Attendance from './models/Attendance.js';
 import Marks from './models/Marks.js';
 
+import connectDB from './config/db.js';
+
 dotenv.config();
 
 const runModelTests = async () => {
@@ -14,7 +16,7 @@ const runModelTests = async () => {
 
   // 1. Establish Database Connection
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await connectDB();
     console.log('MongoDB Connected successfully for model testing.');
   } catch (error) {
     console.error('Database connection failed:', error);
@@ -153,26 +155,26 @@ const runModelTests = async () => {
     });
 
     // Expecting:
-    // sessionalTotal = 4 + 4 + 4 + 4 + 4 + 5 = 25
-    // grandTotal = 24 + 25 = 49
-    // percentage = (49 / 60) * 100 = 81.67%
-    // grade = 'A' (since percentage >= 80)
+    // sessionalTotal = 4 + 4 + 4 + 4 + 4 + 5 = 25 -> capped at 20
+    // grandTotal = 24 + 20 = 44
+    // percentage = (44 / 50) * 100 = 88%
+    // grade = 'B' (since percentage >= 80 and < 90)
     console.log('Marks Calculations Result:');
-    console.log('- Sessional Total:', studentMarks.sessionalTotal, '(Expected: 25)');
-    console.log('- Grand Total:', studentMarks.grandTotal, '(Expected: 49)');
-    console.log('- Percentage:', studentMarks.percentage + '%', '(Expected: 81.67%)');
-    console.log('- Grade:', studentMarks.grade, '(Expected: A)');
+    console.log('- Sessional Total:', studentMarks.sessionalTotal, '(Expected: 20)');
+    console.log('- Grand Total:', studentMarks.grandTotal, '(Expected: 44)');
+    console.log('- Percentage:', studentMarks.percentage + '%', '(Expected: 88%)');
+    console.log('- Grade:', studentMarks.grade, '(Expected: B)');
 
-    if (studentMarks.sessionalTotal !== 25) {
+    if (studentMarks.sessionalTotal !== 20) {
       throw new Error('Sessional total calculation failed!');
     }
-    if (studentMarks.grandTotal !== 49) {
+    if (studentMarks.grandTotal !== 44) {
       throw new Error('Grand total calculation failed!');
     }
-    if (studentMarks.percentage !== 81.67) {
+    if (studentMarks.percentage !== 88) {
       throw new Error('Percentage calculation failed!');
     }
-    if (studentMarks.grade !== 'A') {
+    if (studentMarks.grade !== 'B') {
       throw new Error('Grade evaluation failed!');
     }
     console.log('SUCCESS: All marks auto-calculations and grade classifications passed.');

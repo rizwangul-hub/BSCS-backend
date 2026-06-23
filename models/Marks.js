@@ -93,20 +93,21 @@ marksSchema.index({ student: 1, subject: 1 }, { unique: true });
 
 // Pre-save middleware to calculate sessional total, grand total, percentage, and grade
 marksSchema.pre('save', function () {
-  // 1. Calculate Sessional Total (Max 30)
-  this.sessionalTotal =
+  // 1. Calculate Sessional Total (Max 20)
+  const sessionalSum =
     (this.presentation || 0) +
     (this.test1 || 0) +
     (this.test2 || 0) +
     (this.assignment || 0) +
     (this.quiz || 0) +
     (this.attendanceMarks || 0);
+  this.sessionalTotal = Math.min(20, sessionalSum);
 
-  // 2. Calculate Grand Total (Max 60)
+  // 2. Calculate Grand Total (Max 50)
   this.grandTotal = (this.midMarks || 0) + this.sessionalTotal;
 
-  // 3. Calculate Percentage (Grand Total / 60 * 100)
-  this.percentage = Math.round((this.grandTotal / 60) * 10000) / 100; // Keep two decimal places
+  // 3. Calculate Percentage (Grand Total / 50 * 100)
+  this.percentage = Math.round((this.grandTotal / 50) * 10000) / 100; // Keep two decimal places
 
   // 4. Assign Grade
   if (this.percentage >= 90) {
